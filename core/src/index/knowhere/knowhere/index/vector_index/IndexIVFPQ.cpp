@@ -59,7 +59,16 @@ IVFPQ::CopyCpuToGpu(const int64_t device_id, const Config& config) {
 
     if (auto res = FaissGpuResourceMgr::GetInstance().GetRes(device_id)) {
         ResScope rs(res, device_id, false);
-        auto gpu_index = faiss::gpu::index_cpu_to_gpu(res->faiss_res.get(), device_id, index_.get());
+        // Set useFloat16 for GPU IVFPQ
+	// aviod requiredSmemSize <= getMaxSharedMemPerBlock(device_)
+	// detail:  https://github.com/milvus-io/milvus/issues/6723
+	GpuClonerOptions options;
+	options.useFloat16CoarseQuantizer = true;
+	options.useFloat16 = true;
+	auto gpu_index = faiss::gpu::index_cpu_to_gpu(res->faiss_res.get(), device_id, index_.get(), options);
+	
+
+	// auto gpu_index = faiss::gpu::index_cpu_to_gpu(res->faiss_res.get(), device_id, index_.get());
 
         std::shared_ptr<faiss::Index> device_index;
         device_index.reset(gpu_index);
